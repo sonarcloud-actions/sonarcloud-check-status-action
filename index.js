@@ -1,18 +1,29 @@
 const core = require('@actions/core');
-const wait = require('./wait');
+const {context} = require('@actions/github');
+const getSonarStatus = require('./sonar');
 
 
 // most @actions toolkit packages have async methods
 async function run() {
   try {
-    const ms = core.getInput('milliseconds');
-    core.info(`Waiting ${ms} milliseconds ...`);
+    const sonarCloudUrlInput = core.getInput('sonarcloud-url', {required: false});
+    const sonarCloudUrl = (sonarCloudUrlInput) ? sonarCloudUrlInput : 'https://sonarcloud.io';
 
-    core.debug((new Date()).toTimeString()); // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
-    await wait(parseInt(ms));
-    core.info((new Date()).toTimeString());
+    const orgInput = core.getInput('org', {required: false});
+    const org = (orgInput) ? orgInput : context.repo.owner;
 
-    core.setOutput('time', new Date().toTimeString());
+    const repoInput = core.getInput('repo', {required: false});
+    const repo = (repoInput) ? repoInput : context.repo.repo;
+
+    const response = await getSonarStatus(sonarCloudUrl, org, repo);
+    core.info(`response=${JSON.stringify(response)}`);
+
+    const status = response.projectStatus.status;
+    core.info(`status=${status}`);
+
+    if (status !== 'OK') {
+      core.setFailed('Failed Sonar Check.');
+    }
   } catch (error) {
     core.setFailed(error.message);
   }
