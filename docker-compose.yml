@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  sonar:
+    image: sonarqube
+    ports:
+      - "9000:9000"
+  sonar-scan:
+    image: sonarsource/sonar-scanner-cli
+    environment:
+      - SONAR_HOST_URL=http://sonarqube:9000
+    volumes:
+      - ".:/usr/src"
+    links:
+      - "sonar:sonarqube"
+    command:
+      - -Dsonar.login=admin
+      - -Dsonar.password=admin
+    restart: on-failure
+
