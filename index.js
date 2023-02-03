@@ -15,7 +15,12 @@ async function run() {
     const repoInput = core.getInput('repo', {required: false});
     const repo = (repoInput) ? repoInput : context.repo.repo;
 
-    const response = await getSonarStatus(sonarCloudUrl, org, repo);
+    const options = {}
+    if (process.env.SONAR_TOKEN) {
+      options.headers = {'Authorization': `Basic ${Buffer.from(process.env.SONAR_TOKEN + ":").toString('base64')}`}
+    }
+
+    const response = await getSonarStatus(sonarCloudUrl, org, repo, options);
     core.info(`response=${JSON.stringify(response)}`);
 
     const status = response.projectStatus.status;
