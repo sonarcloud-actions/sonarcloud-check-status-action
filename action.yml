@@ -1,7 +1,7 @@
 name: 'Sonarcloud check status action'
 description: 'Checks the status of a SonarCloud project'
 inputs:
-  sonarcloud-url:
+  url:
     description: 'url of sonarcloud'
     required: false
     default: 'https://sonarcloud.io'

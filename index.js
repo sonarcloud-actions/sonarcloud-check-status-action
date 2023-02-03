@@ -6,7 +6,7 @@ const getSonarStatus = require('./sonar');
 // most @actions toolkit packages have async methods
 async function run() {
   try {
-    const sonarCloudUrlInput = core.getInput('sonarcloud-url', {required: false});
+    const sonarCloudUrlInput = core.getInput('url', {required: false});
     const sonarCloudUrl = (sonarCloudUrlInput) ? sonarCloudUrlInput : 'https://sonarcloud.io';
 
     const orgInput = core.getInput('org', {required: false});
