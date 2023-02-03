@@ -15,5 +15,6 @@ services:
     command:
       - -Dsonar.login=admin
       - -Dsonar.password=admin
+      - -Dsonar.projectKey=sonarcloud-actions_sonarcloud-check-status-action
     restart: on-failure
 
