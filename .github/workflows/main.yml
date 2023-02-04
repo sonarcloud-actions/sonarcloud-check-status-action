@@ -32,7 +32,6 @@ jobs:
       security-events: write
 
     strategy:
-      fail-fast: false
       matrix:
         language: [ 'javascript' ]
         node-version: [16.x]
@@ -61,3 +60,9 @@ jobs:
         uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: SonarCloud Scan
+      - uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
