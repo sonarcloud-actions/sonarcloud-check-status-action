@@ -14,6 +14,6 @@ test('status is returned from sonar', async () => {
     });
     fetch.mockImplementation(() => response);
 
-    const result = await getSonarStatus('https://sonarcloud.io', 'test', 'test');
+    const result = await getSonarStatus('https://sonarcloud.io', 'test', 'test', 'main');
     expect(result.projectStatus.status).toBe('OK');
 });

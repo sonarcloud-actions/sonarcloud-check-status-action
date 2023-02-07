@@ -11,6 +11,9 @@ inputs:
   repo:
     description: 'Github Repo'
     required: false
+  branch:
+    description: 'Branch to check status. Defaults the current ref.'
+    required: false
 runs:
   using: 'node16'
   main: 'dist/index.js'

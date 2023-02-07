@@ -1,8 +1,8 @@
 const fetch = require('node-fetch');
 
-const getSonarStatus = async (endpoint, org, project, options) => {
+const getSonarStatus = async (endpoint, org, project, branch, options) => {
     const projectKey = `${org}_${project}`
-    const url = `${endpoint}/api/qualitygates/project_status?projectKey=${projectKey}`
+    const url = `${endpoint}/api/qualitygates/project_status?projectKey=${projectKey}&branch=${branch}`
     return await fetch(url, options).then(result => result.json())
 }
 module.exports = getSonarStatus
