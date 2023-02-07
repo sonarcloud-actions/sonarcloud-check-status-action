@@ -16,7 +16,7 @@ async function run() {
     const repo = (repoInput) ? repoInput : context.repo.repo;
 
     const branchInput = core.getInput('branch', {required: false});
-    const branch = (branchInput) ? branchInput : context.ref;
+    const branch = (branchInput) ? branchInput : process.env.GITHUB_REF_NAME;
 
     const options = {}
     if (process.env.SONAR_TOKEN) {
