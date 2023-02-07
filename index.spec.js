@@ -24,6 +24,9 @@ describe('sonar-check-status-action', () => {
         process.env.GITHUB_REPOSITORY = "sonarcloud-actions/sonarcloud-check-status-action"
         process.env.INPUT_URL='http://localhost:9000';
 
+        const branch = cp.execSync('git rev-parse --abbrev-ref HEAD').toString()
+        process.env.INPUT_BRANCH = branch;
+
         const ip = path.join(__dirname, 'index.js');
         const result = cp.execSync(`node ${ip}`, {env: process.env, }).toString();
 
