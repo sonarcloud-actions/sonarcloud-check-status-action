@@ -15,8 +15,17 @@ async function run() {
     const repoInput = core.getInput('repo', {required: false});
     const repo = (repoInput) ? repoInput : context.repo.repo;
 
+
+
+    const params = {}
     const branchInput = core.getInput('branch', {required: false});
-    const branch = (branchInput) ? branchInput : process.env.GITHUB_REF_NAME;
+    const githubEventNumber = process.env.GITHUB_EVENT_NUMBER;
+    if (githubEventNumber && !branchInput) {
+      params.pullRequest = githubEventNumber
+    } else {
+      const branch = (branchInput) ? branchInput : process.env.GITHUB_REF_NAME;
+      params.branch = branch;
+    }
 
     const options = {}
     if (process.env.SONAR_TOKEN) {
@@ -24,7 +33,7 @@ async function run() {
     }
 
 
-    const response = await getSonarStatus(sonarCloudUrl, org, repo, {branch: branch}, options);
+    const response = await getSonarStatus(sonarCloudUrl, org, repo, params, options);
     core.info(`response=${JSON.stringify(response)}`);
 
     const status = response.projectStatus.status;
