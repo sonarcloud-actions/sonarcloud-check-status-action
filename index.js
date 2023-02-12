@@ -23,7 +23,8 @@ async function run() {
       options.headers = {'Authorization': `Basic ${Buffer.from(process.env.SONAR_TOKEN + ":").toString('base64')}`}
     }
 
-    const response = await getSonarStatus(sonarCloudUrl, org, repo, branch, options);
+
+    const response = await getSonarStatus(sonarCloudUrl, org, repo, {branch: branch}, options);
     core.info(`response=${JSON.stringify(response)}`);
 
     const status = response.projectStatus.status;
