@@ -19,12 +19,11 @@ async function run() {
 
     const params = {}
     const branchInput = core.getInput('branch', {required: false});
-    const githubEventNumber = process.env.GITHUB_EVENT_NUMBER;
+    const githubEventNumber = context.issue.number;
     if (githubEventNumber && !branchInput) {
       params.pullRequest = githubEventNumber
     } else {
-      const branch = (branchInput) ? branchInput : process.env.GITHUB_REF_NAME;
-      params.branch = branch;
+      params.branch = (branchInput) ? branchInput : process.env.GITHUB_REF_NAME;
     }
 
     const options = {}
