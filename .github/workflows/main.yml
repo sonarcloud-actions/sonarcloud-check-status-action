@@ -71,6 +71,8 @@ jobs:
 
       - name: Check Sonar Status
         run: node ./index.js
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
   publish:
     needs: [build, scan]
     runs-on: ubuntu-latest
