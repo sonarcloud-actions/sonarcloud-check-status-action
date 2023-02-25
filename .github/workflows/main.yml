@@ -1,4 +1,4 @@
-name: Node.js CI
+name: Sonar Cloud Check Status Action Build
 
 on:
   push:
