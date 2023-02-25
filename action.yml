@@ -1,5 +1,8 @@
 name: 'Sonarcloud check status action'
 description: 'Checks the status of a SonarCloud project'
+branding:
+  icon: cloud
+  color: orange
 inputs:
   url:
     description: 'url of sonarcloud'
