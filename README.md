@@ -37,7 +37,7 @@ steps:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   - name: Check Sonar Status
-    run: sonarcloud-actions/sonarcloud-check-status-action@v1
+    uses: sonarcloud-actions/sonarcloud-check-status-action@v1
 ```
 
 ### With `SONAR_TOKEN`
@@ -52,7 +52,7 @@ steps:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   - name: Check Sonar Status
-    run: sonarcloud-actions/sonarcloud-check-status-action@v1
+    uses: sonarcloud-actions/sonarcloud-check-status-action@v1
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 ```
@@ -69,7 +69,7 @@ steps:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   - name: Check Sonar Status
-    run: sonarcloud-actions/sonarcloud-check-status-action@v1
+    uses: sonarcloud-actions/sonarcloud-check-status-action@v1
     with:
       branch: main
     env:
