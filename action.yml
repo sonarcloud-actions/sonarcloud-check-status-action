@@ -1,4 +1,4 @@
-name: 'Sonarcloud check status action'
+name: 'Sonarcloud Check Status Action'
 description: 'Checks the status of a SonarCloud project'
 branding:
   icon: cloud
