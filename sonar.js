@@ -14,13 +14,16 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // SonarCloud computes the quality gate asynchronously after a scan, reporting NONE until it is ready.
 const waitForSonarStatus = async (endpoint, org, project, params, options, {timeoutMs, intervalMs, log = () => {}}) => {
     const deadline = Date.now() + timeoutMs;
-    let response = await getSonarStatus(endpoint, org, project, params, options);
-    while (response.projectStatus && response.projectStatus.status === 'NONE' && Date.now() + intervalMs <= deadline) {
+    const poll = async () => {
+        const response = await getSonarStatus(endpoint, org, project, params, options);
+        if (response.projectStatus?.status !== 'NONE' || Date.now() + intervalMs > deadline) {
+            return response;
+        }
         log(`Quality gate status is NONE, retrying in ${intervalMs / 1000}s`);
         await sleep(intervalMs);
-        response = await getSonarStatus(endpoint, org, project, params, options);
-    }
-    return response;
+        return poll();
+    };
+    return poll();
 }
 
 module.exports = getSonarStatus
