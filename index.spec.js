@@ -9,9 +9,10 @@ describe('sonar-check-status-action', () => {
     let authToken;
 
     beforeAll(async () => {
-       await compose.upAll({cwd: path.join(__dirname), log: true});
+       await compose.upOne('sonar', {cwd: path.join(__dirname), log: true});
        await waitTillSonarHealthy();
        authToken = await getToken();
+       await compose.upOne('sonar-scan', {cwd: path.join(__dirname), log: true, env: {...process.env, SONAR_TOKEN: authToken}});
        await waitTillProjectIsAvailable();
     });
 
@@ -33,8 +34,11 @@ describe('sonar-check-status-action', () => {
     });
 
     async function waitTillSonarHealthy() {
+        const deadline = Date.now() + 10 * 60 * 1000;
         var health;
         do {
+            if (Date.now() > deadline) throw new Error('Timed out waiting for SonarQube to become healthy');
+            await sleep(2000);
             try {
                 const response = await fetch('http://localhost:9000/api/system/health', {
                     headers: {'Authorization': 'Basic YWRtaW46YWRtaW4='}
@@ -42,6 +46,10 @@ describe('sonar-check-status-action', () => {
                 health = response.health;
             } catch (e) {}
         } while (health !== 'GREEN');
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     async function getToken() {
@@ -53,8 +61,11 @@ describe('sonar-check-status-action', () => {
     }
 
     async function waitTillProjectIsAvailable() {
+        const deadline = Date.now() + 10 * 60 * 1000;
         var r = {};
         do {
+            if (Date.now() > deadline) throw new Error('Timed out waiting for project analysis to be available');
+            await sleep(2000);
             try {
                 r = await fetch('http://localhost:9000/api/qualitygates/project_status?projectKey=sonarcloud-actions_sonarcloud-check-status-action', {
                     headers: {'Authorization': `Basic ${Buffer.from(authToken + ":").toString('base64')}`}

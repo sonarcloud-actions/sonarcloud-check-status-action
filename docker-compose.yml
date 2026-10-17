@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   sonar:
     image: sonarqube
@@ -8,13 +7,10 @@ services:
     image: sonarsource/sonar-scanner-cli
     environment:
       - SONAR_HOST_URL=http://sonarqube:9000
+      - SONAR_TOKEN
     volumes:
       - ".:/usr/src"
     links:
       - "sonar:sonarqube"
     command:
-      - -Dsonar.login=admin
-      - -Dsonar.password=admin
       - -Dsonar.projectKey=sonarcloud-actions_sonarcloud-check-status-action
-    restart: on-failure
-
