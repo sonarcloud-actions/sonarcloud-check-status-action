@@ -1,5 +1,3 @@
-const fetch = require('node-fetch');
-
 const getSonarStatus = async (endpoint, org, project, params, options) => {
     const projectKey = `${org}_${project}`
     const url = `${endpoint}/api/qualitygates/project_status?${new URLSearchParams({
@@ -26,5 +24,5 @@ const waitForSonarStatus = async (endpoint, org, project, params, options, {time
     return poll();
 }
 
-module.exports = getSonarStatus
-module.exports.waitForSonarStatus = waitForSonarStatus
+export default getSonarStatus
+export {waitForSonarStatus}

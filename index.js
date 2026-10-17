@@ -1,6 +1,6 @@
-const core = require('@actions/core');
-const {context} = require('@actions/github');
-const {waitForSonarStatus} = require('./sonar');
+import * as core from '@actions/core';
+import {context} from '@actions/github';
+import {waitForSonarStatus} from './sonar.js';
 
 
 // most @actions toolkit packages have async methods

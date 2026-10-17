@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "description": "Github action for checking the status of a Sonarcloud project.",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "lint": "eslint .",
     "prepare": "ncc build index.js -o dist --source-map --license LICENSE",
-    "test": "jest --coverage",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "all": "npm run lint && npm run prepare && npm run test"
   },
   "repository": {
@@ -27,16 +28,15 @@
   },
   "homepage": "https://github.com/sonarcloud-actions/sonarcloud-check-status-action#readme",
   "dependencies": {
-    "@actions/core": "^2.0.3",
-    "@actions/github": "^8.0.1",
-    "node-fetch": "^2.6.9"
+    "@actions/core": "^3.0.1",
+    "@actions/github": "^9.1.1"
   },
   "devDependencies": {
+    "@jest/globals": "^30.5.2",
     "@vercel/ncc": "^0.45.0",
     "docker-compose": "^1.0.0",
     "eslint": "^10.0.0",
-    "jest": "^30.0.0",
-    "uuid": "^11.0.0"
+    "jest": "^30.0.0"
   },
   "jest": {
     "collectCoverageFrom": [
