@@ -1,8 +1,10 @@
-const compose = require('docker-compose');
-const path = require("path");
-const fetch = require('node-fetch');
-const { v4: uuidv4 } = require('uuid');
-const cp = require('child_process');
+import {jest, describe, it, beforeAll, afterAll} from '@jest/globals';
+import * as compose from 'docker-compose';
+import path from 'path';
+import {randomUUID} from 'crypto';
+import cp from 'child_process';
+
+const __dirname = import.meta.dirname;
 
 describe('sonar-check-status-action', () => {
     jest.setTimeout(7200000);
@@ -53,7 +55,7 @@ describe('sonar-check-status-action', () => {
     }
 
     async function getToken() {
-        return await fetch(`http://localhost:9000/api/user_tokens/generate?name=${uuidv4()}`, {
+        return await fetch(`http://localhost:9000/api/user_tokens/generate?name=${randomUUID()}`, {
             method: 'POST',
             headers: {'Authorization': 'Basic YWRtaW46YWRtaW4='}
         }).then(response => response.json())

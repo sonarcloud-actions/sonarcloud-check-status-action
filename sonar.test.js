@@ -1,6 +1,9 @@
-const getSonarStatus = require('./sonar');
-const fetch = require('node-fetch');
-jest.mock('node-fetch', () => jest.fn())
+import {jest, describe, test, expect, beforeEach} from '@jest/globals';
+import getSonarStatus, {waitForSonarStatus} from './sonar.js';
+
+const fetch = jest.fn();
+global.fetch = fetch;
+
 test('status is returned from sonar', async () => {
     const response = Promise.resolve({
         ok: true,
@@ -19,7 +22,6 @@ test('status is returned from sonar', async () => {
 });
 
 describe('waitForSonarStatus', () => {
-    const {waitForSonarStatus} = getSonarStatus;
     const statusResponse = (status) => Promise.resolve({ok: true, json: () => ({projectStatus: {status}})});
 
     beforeEach(() => fetch.mockReset());
