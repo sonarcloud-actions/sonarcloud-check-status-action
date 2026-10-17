@@ -1,6 +1,6 @@
 const core = require('@actions/core');
 const {context} = require('@actions/github');
-const getSonarStatus = require('./sonar');
+const {waitForSonarStatus} = require('./sonar');
 
 
 // most @actions toolkit packages have async methods
@@ -32,7 +32,16 @@ async function run() {
     }
 
 
-    const response = await getSonarStatus(sonarCloudUrl, org, repo, params, options);
+    const waitTimeoutInput = core.getInput('wait-timeout', {required: false});
+    const waitTimeout = (waitTimeoutInput) ? Number(waitTimeoutInput) : 300;
+    const pollIntervalInput = core.getInput('poll-interval', {required: false});
+    const pollInterval = (pollIntervalInput) ? Number(pollIntervalInput) : 10;
+
+    const response = await waitForSonarStatus(sonarCloudUrl, org, repo, params, options, {
+      timeoutMs: waitTimeout * 1000,
+      intervalMs: pollInterval * 1000,
+      log: core.info
+    });
     core.info(`response=${JSON.stringify(response)}`);
 
     const status = response.projectStatus.status;

@@ -17,6 +17,14 @@ inputs:
   branch:
     description: 'Branch to check status. Defaults the current ref.'
     required: false
+  wait-timeout:
+    description: 'Seconds to keep polling while the quality gate status is NONE (analysis still processing).'
+    required: false
+    default: '300'
+  poll-interval:
+    description: 'Seconds between polls while waiting for the quality gate status.'
+    required: false
+    default: '10'
 runs:
   using: 'node20'
   main: 'dist/index.js'
