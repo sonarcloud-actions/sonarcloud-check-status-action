@@ -7,6 +7,7 @@ permissions:
   contents: write
 jobs:
   build:
+    timeout-minutes: 45
 
     runs-on: ubuntu-latest
 
@@ -26,6 +27,7 @@ jobs:
     - run: npm run prepare
 
   scan:
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -74,6 +76,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
   publish:
+    timeout-minutes: 15
     needs: [build, scan]
     runs-on: ubuntu-latest
 
