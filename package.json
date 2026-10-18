@@ -36,7 +36,9 @@
     "@vercel/ncc": "^0.45.0",
     "docker-compose": "^1.0.0",
     "eslint": "^10.0.0",
-    "jest": "^30.0.0"
+    "jest": "^30.0.0",
+    "p-timeout": "^8.0.0",
+    "p-wait-for": "^7.0.0"
   },
   "jest": {
     "collectCoverageFrom": [

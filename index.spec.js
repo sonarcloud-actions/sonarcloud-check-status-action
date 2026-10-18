@@ -3,6 +3,8 @@ import * as compose from 'docker-compose';
 import path from 'path';
 import {randomUUID} from 'crypto';
 import cp from 'child_process';
+import pWaitFor, {TimeoutError} from 'p-wait-for';
+import pTimeout from 'p-timeout';
 
 const __dirname = import.meta.dirname;
 
@@ -14,41 +16,29 @@ function progress(message) {
     process.stdout.write(`[integration] ${new Date().toISOString()} ${message}\n`);
 }
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function withTimeout(promise, ms, description) {
-    let timer;
-    const timeout = new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`Timed out after ${ms / 1000}s: ${description}`)), ms);
-    });
-    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
-
 async function fetchJson(url, options = {}) {
     const response = await fetch(url, {...options, signal: AbortSignal.timeout(10000)});
     return response.json();
 }
 
+// Polls check() until it reports done. Errors (e.g. connection refused while SonarQube starts) count as not ready.
 async function waitFor(description, timeoutMs, check) {
-    const deadline = Date.now() + timeoutMs;
     let attempt = 0;
-    let last;
-    while (Date.now() < deadline) {
+    let lastState;
+    await pWaitFor(async () => {
         try {
-            last = await check();
-            if (last.done) {
-                progress(`${description}: ready`);
-                return;
-            }
+            const {done, state} = await check();
+            lastState = state;
+            if (done) return true;
         } catch (e) {
-            last = {state: e.message};
+            lastState = e.message;
         }
-        if (attempt++ % 15 === 0) progress(`${description}: waiting (${last.state})`);
-        await sleep(2000);
-    }
-    throw new Error(`Timed out waiting for ${description} (last state: ${last && last.state})`);
+        if (attempt++ % 15 === 0) progress(`${description}: waiting (${lastState})`);
+        return false;
+    }, {interval: 2000, timeout: timeoutMs}).catch(e => {
+        throw e instanceof TimeoutError ? new Error(`Timed out waiting for ${description} (last state: ${lastState})`) : e;
+    });
+    progress(`${description}: ready`);
 }
 
 function dumpContainerLogs() {
@@ -66,7 +56,7 @@ describe('sonar-check-status-action', () => {
     beforeAll(async () => {
         try {
             progress('starting sonar');
-            await withTimeout(compose.upOne('sonar', {cwd, log: true}), 5 * MINUTE, 'docker compose up sonar');
+            await pTimeout(compose.upOne('sonar', {cwd, log: true}), {milliseconds: 5 * MINUTE, message: 'Timed out: docker compose up sonar'});
             await waitFor('SonarQube health', 10 * MINUTE, async () => {
                 const {health} = await fetchJson('http://localhost:9000/api/system/health', {headers: adminAuth});
                 return {done: health === 'GREEN', state: `health=${health}`};
@@ -80,7 +70,7 @@ describe('sonar-check-status-action', () => {
             if (!authToken) throw new Error(`Could not generate token: ${JSON.stringify(body)}`);
 
             progress('starting sonar-scan');
-            await withTimeout(compose.upOne('sonar-scan', {cwd, log: true, env: {...process.env, SONAR_TOKEN: authToken}}), 5 * MINUTE, 'docker compose up sonar-scan');
+            await pTimeout(compose.upOne('sonar-scan', {cwd, log: true, env: {...process.env, SONAR_TOKEN: authToken}}), {milliseconds: 5 * MINUTE, message: 'Timed out: docker compose up sonar-scan'});
             await waitFor('project analysis', 15 * MINUTE, async () => {
                 const r = await fetchJson('http://localhost:9000/api/qualitygates/project_status?projectKey=sonarcloud-actions_sonarcloud-check-status-action', {
                     headers: {'Authorization': `Basic ${Buffer.from(authToken + ":").toString('base64')}`}
@@ -95,7 +85,7 @@ describe('sonar-check-status-action', () => {
     }, 40 * MINUTE);
 
     afterAll(async () => {
-        await withTimeout(compose.down({cwd, log: true}), 2 * MINUTE, 'docker compose down');
+        await pTimeout(compose.down({cwd, log: true}), {milliseconds: 2 * MINUTE, message: 'Timed out: docker compose down'});
     }, 3 * MINUTE);
 
     it('should check status', () => {
