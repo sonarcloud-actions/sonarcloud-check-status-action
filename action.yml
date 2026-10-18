@@ -25,6 +25,10 @@ inputs:
     description: 'Seconds between polls while waiting for the quality gate status.'
     required: false
     default: '10'
+  report-task-file:
+    description: 'Report task file written by the scanner. When present, waits for SonarCloud to finish processing that analysis before checking the quality gate.'
+    required: false
+    default: '.scannerwork/report-task.txt'
 runs:
   using: 'node24'
   main: 'dist/index.js'

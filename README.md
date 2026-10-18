@@ -23,6 +23,9 @@ Seconds to keep polling while the quality gate status is `NONE`, which SonarClou
 ### `poll-interval`
 Seconds between polls while waiting for the quality gate status. **default** `10`
 
+### `report-task-file`
+Report task file the scanner writes after uploading an analysis. When it exists, the action waits (up to `wait-timeout`) for SonarCloud to finish processing that analysis, so the quality gate is not read from the previous one. **default** `.scannerwork/report-task.txt`
+
 ## Environment Variables
 
 ### `SONAR_TOKEN`

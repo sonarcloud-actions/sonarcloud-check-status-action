@@ -1,19 +1,14 @@
 import * as core from '@actions/core';
 import {context} from '@actions/github';
-import {waitForSonarStatus} from './sonar.js';
+import {readCeTaskId, waitForSonarStatus, waitForSonarTask} from './sonar.js';
 
 
 // most @actions toolkit packages have async methods
 async function run() {
   try {
-    const sonarCloudUrlInput = core.getInput('url', {required: false});
-    const sonarCloudUrl = (sonarCloudUrlInput) ? sonarCloudUrlInput : 'https://sonarcloud.io';
-
-    const orgInput = core.getInput('org', {required: false});
-    const org = (orgInput) ? orgInput : context.repo.owner;
-
-    const repoInput = core.getInput('repo', {required: false});
-    const repo = (repoInput) ? repoInput : context.repo.repo;
+    const sonarCloudUrl = core.getInput('url', {required: false}) || 'https://sonarcloud.io';
+    const org = core.getInput('org', {required: false}) || context.repo.owner;
+    const repo = core.getInput('repo', {required: false}) || context.repo.repo;
 
 
 
@@ -23,7 +18,7 @@ async function run() {
     if (githubEventNumber && !branchInput) {
       params.pullRequest = githubEventNumber
     } else {
-      params.branch = (branchInput) ? branchInput : process.env.GITHUB_REF_NAME;
+      params.branch = branchInput || process.env.GITHUB_REF_NAME;
     }
 
     const options = {}
@@ -37,11 +32,17 @@ async function run() {
     const pollIntervalInput = core.getInput('poll-interval', {required: false});
     const pollInterval = (pollIntervalInput) ? Number(pollIntervalInput) : 10;
 
-    const response = await waitForSonarStatus(sonarCloudUrl, org, repo, params, options, {
-      timeoutMs: waitTimeout * 1000,
-      intervalMs: pollInterval * 1000,
-      log: core.info
-    });
+    const waitOptions = {timeoutMs: waitTimeout * 1000, intervalMs: pollInterval * 1000, log: core.info};
+
+    // The quality gate keeps reporting the previous analysis until SonarCloud finishes processing the new report.
+    const reportTaskFile = core.getInput('report-task-file', {required: false}) || '.scannerwork/report-task.txt';
+    const taskId = await readCeTaskId(reportTaskFile);
+    if (taskId) {
+      const task = await waitForSonarTask(sonarCloudUrl, taskId, options, waitOptions);
+      core.info(`analysis task ${taskId} status=${task?.status}`);
+    }
+
+    const response = await waitForSonarStatus(sonarCloudUrl, org, repo, params, options, waitOptions);
     core.info(`response=${JSON.stringify(response)}`);
 
     const status = response.projectStatus.status;
