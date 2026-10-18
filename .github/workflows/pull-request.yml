@@ -5,12 +5,13 @@ on:
     branches: [ "main" ]
 jobs:
   build:
+    timeout-minutes: 45
 
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [20]
+        node-version: [24]
 
     steps:
       - uses: actions/checkout@v7
@@ -24,6 +25,7 @@ jobs:
       - run: npm run prepare
 
   scan:
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -33,7 +35,7 @@ jobs:
     strategy:
       matrix:
         language: [ 'javascript' ]
-        node-version: [20]
+        node-version: [24]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7

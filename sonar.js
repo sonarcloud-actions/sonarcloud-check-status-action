@@ -1,3 +1,5 @@
+import {setTimeout as sleep} from 'node:timers/promises';
+
 const getSonarStatus = async (endpoint, org, project, params, options) => {
     const projectKey = `${org}_${project}`
     const url = `${endpoint}/api/qualitygates/project_status?${new URLSearchParams({
@@ -7,7 +9,6 @@ const getSonarStatus = async (endpoint, org, project, params, options) => {
     return await fetch(url, options).then(result => result.json())
 }
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // SonarCloud computes the quality gate asynchronously after a scan, reporting NONE until it is ready.
 const waitForSonarStatus = async (endpoint, org, project, params, options, {timeoutMs, intervalMs, log = () => {}}) => {
