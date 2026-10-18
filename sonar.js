@@ -32,17 +32,24 @@ const waitForSonarStatus = async (endpoint, org, project, params, options, waitO
     waitOptions
 )
 
+const getJson = async (url, options) => fetch(url, options).then(result => result.json())
+
+// SonarCloud lists the analyzed commit with each branch and pull request; SonarQube Server only records it on the analysis.
 const getAnalyzedCommit = async (endpoint, org, project, params, options) => {
-    const query = new URLSearchParams({project: `${org}_${project}`})
-    if (params.pullRequest) {
-        const response = await fetch(`${endpoint}/api/project_pull_requests/list?${query}`, options).then(result => result.json())
-        return response.pullRequests?.find(pullRequest => pullRequest.key === String(params.pullRequest))?.commit?.sha
+    const projectKey = `${org}_${project}`
+    const query = new URLSearchParams({project: projectKey})
+    const listed = params.pullRequest
+        ? (await getJson(`${endpoint}/api/project_pull_requests/list?${query}`, options)).pullRequests?.find(pullRequest => pullRequest.key === String(params.pullRequest))
+        : (await getJson(`${endpoint}/api/project_branches/list?${query}`, options)).branches?.find(branch => branch.name === params.branch)
+    if (listed?.commit?.sha) {
+        return listed.commit.sha
     }
-    const response = await fetch(`${endpoint}/api/project_branches/list?${query}`, options).then(result => result.json())
-    return response.branches?.find(branch => branch.name === params.branch)?.commit?.sha
+    const analysisQuery = new URLSearchParams({project: projectKey, ...params, ps: '1'})
+    const response = await getJson(`${endpoint}/api/project_analyses/search?${analysisQuery}`, options)
+    return response.analyses?.[0]?.revision
 }
 
-// Until SonarCloud finishes processing the new report, the quality gate still reports the previous analysis.
+// Until the server finishes processing the new report, the quality gate still reports the previous analysis.
 const waitForSonarAnalysis = async (endpoint, org, project, params, commit, options, waitOptions) => pollUntil(
     () => getAnalyzedCommit(endpoint, org, project, params, options),
     analyzedCommit => analyzedCommit !== commit,

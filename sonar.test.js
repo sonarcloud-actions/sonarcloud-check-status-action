@@ -78,6 +78,22 @@ describe('getAnalyzedCommit', () => {
         expect(fetch.mock.calls[0][0]).toBe('https://sonarcloud.io/api/project_pull_requests/list?project=org_repo');
     });
 
+    test('falls back to the latest analysis revision when the branch lists no commit', async () => {
+        fetch.mockImplementationOnce(() => jsonResponse({branches: [{name: 'main'}]}))
+            .mockImplementation(() => jsonResponse({analyses: [{revision: 'abc'}]}));
+
+        expect(await getAnalyzedCommit('https://sonarqube.example', 'org', 'repo', {branch: 'main'}, {})).toBe('abc');
+        expect(fetch.mock.calls[1][0]).toBe('https://sonarqube.example/api/project_analyses/search?project=org_repo&branch=main&ps=1');
+    });
+
+    test('falls back to the latest analysis revision when the pull request lists no commit', async () => {
+        fetch.mockImplementationOnce(() => jsonResponse({pullRequests: [{key: '80'}]}))
+            .mockImplementation(() => jsonResponse({analyses: [{revision: 'abc'}]}));
+
+        expect(await getAnalyzedCommit('https://sonarqube.example', 'org', 'repo', {pullRequest: 80}, {})).toBe('abc');
+        expect(fetch.mock.calls[1][0]).toBe('https://sonarqube.example/api/project_analyses/search?project=org_repo&pullRequest=80&ps=1');
+    });
+
     test('returns undefined when the branch has not been analyzed', async () => {
         fetch.mockImplementation(() => jsonResponse({branches: [{name: 'master', commit: {sha: 'abc'}}]}));
 
