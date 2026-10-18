@@ -1,19 +1,14 @@
 import * as core from '@actions/core';
 import {context} from '@actions/github';
-import {waitForSonarStatus} from './sonar.js';
+import {waitForSonarAnalysis, waitForSonarStatus} from './sonar.js';
 
 
 // most @actions toolkit packages have async methods
 async function run() {
   try {
-    const sonarCloudUrlInput = core.getInput('url', {required: false});
-    const sonarCloudUrl = (sonarCloudUrlInput) ? sonarCloudUrlInput : 'https://sonarcloud.io';
-
-    const orgInput = core.getInput('org', {required: false});
-    const org = (orgInput) ? orgInput : context.repo.owner;
-
-    const repoInput = core.getInput('repo', {required: false});
-    const repo = (repoInput) ? repoInput : context.repo.repo;
+    const sonarCloudUrl = core.getInput('url', {required: false}) || 'https://sonarcloud.io';
+    const org = core.getInput('org', {required: false}) || context.repo.owner;
+    const repo = core.getInput('repo', {required: false}) || context.repo.repo;
 
 
 
@@ -23,7 +18,7 @@ async function run() {
     if (githubEventNumber && !branchInput) {
       params.pullRequest = githubEventNumber
     } else {
-      params.branch = (branchInput) ? branchInput : process.env.GITHUB_REF_NAME;
+      params.branch = branchInput || process.env.GITHUB_REF_NAME;
     }
 
     const options = {}
@@ -37,11 +32,21 @@ async function run() {
     const pollIntervalInput = core.getInput('poll-interval', {required: false});
     const pollInterval = (pollIntervalInput) ? Number(pollIntervalInput) : 10;
 
-    const response = await waitForSonarStatus(sonarCloudUrl, org, repo, params, options, {
-      timeoutMs: waitTimeout * 1000,
-      intervalMs: pollInterval * 1000,
-      log: core.info
-    });
+    const waitOptions = {timeoutMs: waitTimeout * 1000, intervalMs: pollInterval * 1000, log: core.info};
+
+    // SonarCloud records the PR head commit, not the merge commit GitHub checks out for pull_request events.
+    const buildCommit = context.payload.pull_request?.head?.sha ?? context.sha;
+    const checksThisBuild = !branchInput || branchInput === process.env.GITHUB_REF_NAME;
+    const commit = core.getInput('commit', {required: false}) || (checksThisBuild ? buildCommit : undefined);
+    if (commit) {
+      const analyzedCommit = await waitForSonarAnalysis(sonarCloudUrl, org, repo, params, commit, options, waitOptions);
+      if (analyzedCommit !== commit) {
+        core.setFailed(`Timed out waiting for SonarCloud to analyze commit ${commit}.`);
+        return;
+      }
+    }
+
+    const response = await waitForSonarStatus(sonarCloudUrl, org, repo, params, options, waitOptions);
     core.info(`response=${JSON.stringify(response)}`);
 
     const status = response.projectStatus.status;
