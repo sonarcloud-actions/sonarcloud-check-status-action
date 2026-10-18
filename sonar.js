@@ -1,4 +1,3 @@
-import {readFile} from 'node:fs/promises';
 import {setTimeout as sleep} from 'node:timers/promises';
 
 const getSonarStatus = async (endpoint, org, project, params, options) => {
@@ -33,32 +32,23 @@ const waitForSonarStatus = async (endpoint, org, project, params, options, waitO
     waitOptions
 )
 
-// The scanner writes the id of the background task processing its report to report-task.txt.
-const readCeTaskId = async (reportTaskFile) => {
-    try {
-        const contents = await readFile(reportTaskFile, 'utf8');
-        return /^ceTaskId=(.+)$/m.exec(contents)?.[1].trim();
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            return undefined;
-        }
-        throw error;
+const getAnalyzedCommit = async (endpoint, org, project, params, options) => {
+    const query = new URLSearchParams({project: `${org}_${project}`})
+    if (params.pullRequest) {
+        const response = await fetch(`${endpoint}/api/project_pull_requests/list?${query}`, options).then(result => result.json())
+        return response.pullRequests?.find(pullRequest => pullRequest.key === String(params.pullRequest))?.commit?.sha
     }
+    const response = await fetch(`${endpoint}/api/project_branches/list?${query}`, options).then(result => result.json())
+    return response.branches?.find(branch => branch.name === params.branch)?.commit?.sha
 }
 
-const getSonarTask = async (endpoint, taskId, options) => {
-    const url = `${endpoint}/api/ce/task?${new URLSearchParams({id: taskId})}`
-    const response = await fetch(url, options).then(result => result.json())
-    return response.task
-}
-
-// Until the task finishes, the quality gate still reports the previous analysis of the branch.
-const waitForSonarTask = async (endpoint, taskId, options, waitOptions) => pollUntil(
-    () => getSonarTask(endpoint, taskId, options),
-    task => ['PENDING', 'IN_PROGRESS'].includes(task?.status),
-    task => `Analysis task status is ${task.status}`,
+// Until SonarCloud finishes processing the new report, the quality gate still reports the previous analysis.
+const waitForSonarAnalysis = async (endpoint, org, project, params, commit, options, waitOptions) => pollUntil(
+    () => getAnalyzedCommit(endpoint, org, project, params, options),
+    analyzedCommit => analyzedCommit !== commit,
+    analyzedCommit => `Last analyzed commit is ${analyzedCommit ?? 'none'}, waiting for ${commit}`,
     waitOptions
 )
 
 export default getSonarStatus
-export {readCeTaskId, waitForSonarStatus, waitForSonarTask}
+export {getAnalyzedCommit, waitForSonarAnalysis, waitForSonarStatus}

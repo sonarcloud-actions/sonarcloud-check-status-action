@@ -1,8 +1,5 @@
 import {jest, describe, test, expect, beforeEach} from '@jest/globals';
-import {mkdtemp, writeFile} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
-import path from 'node:path';
-import getSonarStatus, {readCeTaskId, waitForSonarStatus, waitForSonarTask} from './sonar.js';
+import getSonarStatus, {getAnalyzedCommit, waitForSonarAnalysis, waitForSonarStatus} from './sonar.js';
 
 const fetch = jest.fn();
 global.fetch = fetch;
@@ -56,63 +53,74 @@ describe('waitForSonarStatus', () => {
     });
 });
 
-describe('readCeTaskId', () => {
-    const writeReportTask = async (contents) => {
-        const file = path.join(await mkdtemp(path.join(tmpdir(), 'report-task-')), 'report-task.txt');
-        await writeFile(file, contents);
-        return file;
-    };
-
-    test('reads the task id from the report task file', async () => {
-        const file = await writeReportTask('projectKey=test\nceTaskId=AaFQ6c2dviVu1NYQqhIy\nceTaskUrl=https://sonarcloud.io/api/ce/task?id=AaFQ6c2dviVu1NYQqhIy\n');
-        expect(await readCeTaskId(file)).toBe('AaFQ6c2dviVu1NYQqhIy');
-    });
-
-    test('returns undefined when the file has no task id', async () => {
-        const file = await writeReportTask('projectKey=test\n');
-        expect(await readCeTaskId(file)).toBeUndefined();
-    });
-
-    test('returns undefined when the file does not exist', async () => {
-        expect(await readCeTaskId(path.join(tmpdir(), 'missing', 'report-task.txt'))).toBeUndefined();
-    });
-
-    test('rethrows other read errors', async () => {
-        await expect(readCeTaskId(tmpdir())).rejects.toThrow();
-    });
-});
-
-describe('waitForSonarTask', () => {
-    const taskResponse = (status) => Promise.resolve({ok: true, json: () => ({task: {id: 'task', status}})});
+describe('getAnalyzedCommit', () => {
+    const jsonResponse = (body) => Promise.resolve({ok: true, json: () => body});
 
     beforeEach(() => fetch.mockReset());
 
-    test('polls until the task is no longer pending or in progress', async () => {
-        fetch.mockImplementationOnce(() => taskResponse('PENDING'))
-            .mockImplementationOnce(() => taskResponse('IN_PROGRESS'))
-            .mockImplementation(() => taskResponse('SUCCESS'));
+    test('returns the last analyzed commit of the branch', async () => {
+        fetch.mockImplementation(() => jsonResponse({branches: [
+            {name: 'master', commit: {sha: 'other'}},
+            {name: 'main', commit: {sha: 'abc'}}
+        ]}));
+
+        expect(await getAnalyzedCommit('https://sonarcloud.io', 'org', 'repo', {branch: 'main'}, {})).toBe('abc');
+        expect(fetch.mock.calls[0][0]).toBe('https://sonarcloud.io/api/project_branches/list?project=org_repo');
+    });
+
+    test('returns the last analyzed commit of the pull request', async () => {
+        fetch.mockImplementation(() => jsonResponse({pullRequests: [
+            {key: '79', commit: {sha: 'other'}},
+            {key: '80', commit: {sha: 'abc'}}
+        ]}));
+
+        expect(await getAnalyzedCommit('https://sonarcloud.io', 'org', 'repo', {pullRequest: 80}, {})).toBe('abc');
+        expect(fetch.mock.calls[0][0]).toBe('https://sonarcloud.io/api/project_pull_requests/list?project=org_repo');
+    });
+
+    test('returns undefined when the branch has not been analyzed', async () => {
+        fetch.mockImplementation(() => jsonResponse({branches: [{name: 'master', commit: {sha: 'abc'}}]}));
+
+        expect(await getAnalyzedCommit('https://sonarcloud.io', 'org', 'repo', {branch: 'main'}, {})).toBeUndefined();
+    });
+
+    test('returns undefined when the project cannot be read', async () => {
+        fetch.mockImplementation(() => jsonResponse({errors: [{msg: 'Insufficient privileges'}]}));
+
+        expect(await getAnalyzedCommit('https://sonarcloud.io', 'org', 'repo', {pullRequest: 80}, {})).toBeUndefined();
+    });
+});
+
+describe('waitForSonarAnalysis', () => {
+    const branchesResponse = (sha) => Promise.resolve({ok: true, json: () => ({branches: [{name: 'main', commit: {sha}}]})});
+
+    beforeEach(() => fetch.mockReset());
+
+    test('polls until the commit has been analyzed', async () => {
+        fetch.mockImplementationOnce(() => branchesResponse('previous'))
+            .mockImplementation(() => branchesResponse('abc'));
         const log = jest.fn();
 
-        const task = await waitForSonarTask('https://sonarcloud.io', 'task', {}, {timeoutMs: 1000, intervalMs: 1, log});
-        expect(task.status).toBe('SUCCESS');
-        expect(fetch).toHaveBeenCalledTimes(3);
-        expect(fetch.mock.calls[0][0]).toBe('https://sonarcloud.io/api/ce/task?id=task');
-        expect(log).toHaveBeenCalledWith('Analysis task status is PENDING, retrying in 0.001s');
+        const analyzedCommit = await waitForSonarAnalysis('https://sonarcloud.io', 'org', 'repo', {branch: 'main'}, 'abc', {}, {timeoutMs: 1000, intervalMs: 1, log});
+        expect(analyzedCommit).toBe('abc');
+        expect(fetch).toHaveBeenCalledTimes(2);
+        expect(log).toHaveBeenCalledWith('Last analyzed commit is previous, waiting for abc, retrying in 0.001s');
     });
 
-    test('returns the pending task once the timeout is reached', async () => {
-        fetch.mockImplementation(() => taskResponse('IN_PROGRESS'));
+    test('logs when the branch has no analysis yet', async () => {
+        fetch.mockImplementationOnce(() => Promise.resolve({ok: true, json: () => ({branches: []})}))
+            .mockImplementation(() => branchesResponse('abc'));
+        const log = jest.fn();
 
-        const task = await waitForSonarTask('https://sonarcloud.io', 'task', {}, {timeoutMs: 50, intervalMs: 10});
-        expect(task.status).toBe('IN_PROGRESS');
+        await waitForSonarAnalysis('https://sonarcloud.io', 'org', 'repo', {branch: 'main'}, 'abc', {}, {timeoutMs: 1000, intervalMs: 1, log});
+        expect(log).toHaveBeenCalledWith('Last analyzed commit is none, waiting for abc, retrying in 0.001s');
+    });
+
+    test('returns the last analyzed commit once the timeout is reached', async () => {
+        fetch.mockImplementation(() => branchesResponse('previous'));
+
+        const analyzedCommit = await waitForSonarAnalysis('https://sonarcloud.io', 'org', 'repo', {branch: 'main'}, 'abc', {}, {timeoutMs: 50, intervalMs: 10});
+        expect(analyzedCommit).toBe('previous');
         expect(fetch.mock.calls.length).toBeGreaterThan(1);
-    });
-
-    test('does not poll when the task cannot be read', async () => {
-        fetch.mockImplementation(() => Promise.resolve({ok: false, json: () => ({errors: [{msg: 'Authentication is required'}]})}));
-
-        const task = await waitForSonarTask('https://sonarcloud.io', 'task', {}, {timeoutMs: 1000, intervalMs: 1});
-        expect(task).toBeUndefined();
-        expect(fetch).toHaveBeenCalledTimes(1);
     });
 });

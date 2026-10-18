@@ -1,6 +1,6 @@
 import * as core from '@actions/core';
 import {context} from '@actions/github';
-import {readCeTaskId, waitForSonarStatus, waitForSonarTask} from './sonar.js';
+import {waitForSonarAnalysis, waitForSonarStatus} from './sonar.js';
 
 
 // most @actions toolkit packages have async methods
@@ -34,12 +34,16 @@ async function run() {
 
     const waitOptions = {timeoutMs: waitTimeout * 1000, intervalMs: pollInterval * 1000, log: core.info};
 
-    // The quality gate keeps reporting the previous analysis until SonarCloud finishes processing the new report.
-    const reportTaskFile = core.getInput('report-task-file', {required: false}) || '.scannerwork/report-task.txt';
-    const taskId = await readCeTaskId(reportTaskFile);
-    if (taskId) {
-      const task = await waitForSonarTask(sonarCloudUrl, taskId, options, waitOptions);
-      core.info(`analysis task ${taskId} status=${task?.status}`);
+    // SonarCloud records the PR head commit, not the merge commit GitHub checks out for pull_request events.
+    const buildCommit = context.payload.pull_request?.head?.sha ?? context.sha;
+    const checksThisBuild = !branchInput || branchInput === process.env.GITHUB_REF_NAME;
+    const commit = core.getInput('commit', {required: false}) || (checksThisBuild ? buildCommit : undefined);
+    if (commit) {
+      const analyzedCommit = await waitForSonarAnalysis(sonarCloudUrl, org, repo, params, commit, options, waitOptions);
+      if (analyzedCommit !== commit) {
+        core.setFailed(`Timed out waiting for SonarCloud to analyze commit ${commit}.`);
+        return;
+      }
     }
 
     const response = await waitForSonarStatus(sonarCloudUrl, org, repo, params, options, waitOptions);

@@ -18,13 +18,13 @@ The github repo. **default** will be the Github repo where the workflow is runni
 Branch to check status. **default** the current ref which triggered the workflow.
 
 ### `wait-timeout`
-Seconds to keep polling while the quality gate status is `NONE`, which SonarCloud reports while an analysis is still being processed. **default** `300`
+Seconds to keep polling while SonarCloud is still processing the analysis: until it has analyzed `commit`, and while the quality gate status is `NONE`. **default** `300`
 
 ### `poll-interval`
-Seconds between polls while waiting for the quality gate status. **default** `10`
+Seconds between polls while waiting for the analysis or the quality gate status. **default** `10`
 
-### `report-task-file`
-Report task file the scanner writes after uploading an analysis. When it exists, the action waits (up to `wait-timeout`) for SonarCloud to finish processing that analysis, so the quality gate is not read from the previous one. **default** `.scannerwork/report-task.txt`
+### `commit`
+Commit whose analysis to wait for (up to `wait-timeout`) before checking the quality gate, so the gate is not read from an earlier analysis. Fails if SonarCloud has not analyzed it by then. **default** the commit being built (the head commit for pull requests), or none when `branch` names a different branch
 
 ## Environment Variables
 
