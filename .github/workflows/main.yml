@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "main" ]
 permissions:
-  contents: write
+  contents: read
 jobs:
   build:
     timeout-minutes: 45
@@ -79,6 +79,8 @@ jobs:
     timeout-minutes: 15
     needs: [build, scan]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     strategy:
       matrix:
