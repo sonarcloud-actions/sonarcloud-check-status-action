@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm test
       - run: npm run prepare
 
@@ -47,7 +47,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm test
 
       - name: Initialize CodeQL
@@ -61,7 +61,7 @@ jobs:
           category: "/language:${{matrix.language}}"
 
       - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/node@v1
+        uses: snyk/actions/node@v1 # NOSONAR - trusted vendor action referenced by tag
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
